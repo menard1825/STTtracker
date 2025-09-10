@@ -1,0 +1,41 @@
+import sys
+from bs4 import BeautifulSoup
+
+def parse_prices(file_path="manual_search.html"):
+    """
+    Parses the saved HTML file to find the lowest flight price.
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            html = f.read()
+    except FileNotFoundError:
+        print("ERROR: HTML file not found.", file=sys.stderr)
+        return
+
+    soup = BeautifulSoup(html, "lxml")
+    
+    # Find all price elements. Southwest uses these classes for dollar amounts.
+    price_elements = soup.select('.fare-button--value-total span.currency-text')
+    
+    prices = []
+    for element in price_elements:
+        price_text = element.get_text(strip=True).replace('$', '').replace(',', '')
+        try:
+            prices.append(float(price_text))
+        except ValueError:
+            continue # Ignore if it's not a valid number
+
+    if prices:
+        lowest_price = min(prices)
+        # Print only the final number so the calling script can capture it
+        print(lowest_price)
+    else:
+        # Check if there are no flights available
+        no_flights_message = soup.find(text=lambda t: "we don't have flights available" in t.lower())
+        if no_flights_message:
+            print("NO_FLIGHTS", file=sys.stderr)
+        else:
+            print("NOT_FOUND", file=sys.stderr)
+
+if __name__ == "__main__":
+    parse_prices()
